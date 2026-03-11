@@ -28,6 +28,10 @@ private:
   WebsocketsClient _client;
   String _uri;
   bool _connected;
+  String _fragment_buffer;
+  bool _fragment_active = false;
+  bool _fragment_binary = false;
+  bool _fragment_overflow = false;
 };
 
 #endif // WS_CLIENT_H
