@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PEPEBOT Setup</title>
+  <style>
+    :root {
+      --bg: #f3f5f7;
+      --card: #ffffff;
+      --text: #1b1f24;
+      --muted: #66707a;
+      --line: #d8dde3;
+      --accent: #0a7a5c;
+      --accent-dark: #08664d;
+      --danger: #b00020;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef4f1 0%, var(--bg) 46%);
+      padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      margin-top: 7px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 16px;
+      padding: 12px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(10, 122, 92, 0.12);
+    }
+
+    button {
+      width: 100%;
+      min-height: 46px;
+      margin-top: 16px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active { background: var(--accent-dark); }
+
+    .muted {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .ok { color: var(--accent); font-weight: 700; }
+    .err { color: var(--danger); font-weight: 700; }
+
+    code {
+      background: #f2f4f7;
+      border: 1px solid #e3e7ec;
+      border-radius: 6px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+
+    @media (min-width: 720px) {
+      .card { padding: 20px 22px; }
+      h2 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>PEPEBOT Setup</h2>
+      <p>Isi konfigurasi lalu klik Simpan. Device akan mencoba reconnect ke WiFi.</p>
+
+      <form id="cfgForm">
+        <label for="wifi_ssid">WiFi SSID</label>
+        <input id="wifi_ssid" name="wifi_ssid" required autocomplete="off" autocapitalize="none" spellcheck="false">
+
+        <label for="wifi_pass">WiFi Password</label>
+        <input id="wifi_pass" name="wifi_pass" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
+
+        <label for="ws_uri">WS URI</label>
+        <input id="ws_uri" name="ws_uri" placeholder="ws://host:18790/v1/live" autocomplete="off" autocapitalize="none" spellcheck="false">
+
+        <label for="initial_prompt">Initial Prompt</label>
+        <textarea id="initial_prompt" name="initial_prompt" rows="6"></textarea>
+
+        <button type="submit">Save Configuration</button>
+      </form>
+
+      <div id="status" class="muted">Loading config...</div>
+      <div class="muted">If this page changes, run <code>make build-data && make upload-data</code>.</div>
+    </div>
+  </div>
+
+  <script>
+    async function loadConfig() {
+      const res = await fetch('/api/config');
+      const cfg = await res.json();
+      document.getElementById('wifi_ssid').value = cfg.wifi_ssid || '';
+      document.getElementById('ws_uri').value = cfg.ws_uri || '';
+      document.getElementById('initial_prompt').value = cfg.initial_prompt || '';
+      document.getElementById('status').textContent = 'Config loaded.';
+    }
+
+    document.getElementById('cfgForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        wifi_ssid: document.getElementById('wifi_ssid').value,
+        wifi_pass: document.getElementById('wifi_pass').value,
+        ws_uri: document.getElementById('ws_uri').value,
+        initial_prompt: document.getElementById('initial_prompt').value,
+      };
+
+      const status = document.getElementById('status');
+      status.className = 'muted';
+      status.textContent = 'Saving...';
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          status.className = 'err';
+          status.textContent = data.error || 'Save failed';
+          return;
+        }
+        status.className = 'ok';
+        status.textContent = 'Saved. Device reconnecting...';
+      } catch (err) {
+        status.className = 'err';
+        status.textContent = 'Request error: ' + err;
+      }
+    });
+
+    loadConfig().catch((err) => {
+      const status = document.getElementById('status');
+      status.className = 'err';
+      status.textContent = 'Failed loading config: ' + err;
+    });
+  </script>
+</body>
+</html>

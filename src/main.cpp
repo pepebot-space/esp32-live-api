@@ -2,19 +2,13 @@
 #include "config.h"
 #include "i2s_mic.h"
 #include "i2s_speaker.h"
+#include "runtime_config.h"
 #include "wifi_manager.h"
 #include "ws_client.h"
 #include "ws_protocol.h"
 #include <Arduino.h>
 #include <esp_heap_caps.h>
 #include <mbedtls/base64.h>
-
-#if __has_include("credentials.h")
-#include "credentials.h"
-#else
-#define WIFI_SSID "YourWiFiSSID"
-#define WIFI_PASS "YourWiFiPassword"
-#endif
 
 WsClient ws;
 
@@ -272,6 +266,7 @@ void handleWsMessage(const WebsocketsMessage &msg) {
     break;
 
   case MSG_SETUP_COMPLETE:
+  {
     Serial.println("Setup Complete! Ready to stream.");
     is_playing_audio = false;
     flushRingBuffer(mic_ring_buf);
@@ -279,9 +274,9 @@ void handleWsMessage(const WebsocketsMessage &msg) {
     flushMicTxQueue();
     setState(STATE_LISTENING, "server setupComplete");
 
-#ifdef WS_INITIAL_PROMPT
-    if (!initial_prompt_sent && strlen(WS_INITIAL_PROMPT) > 0) {
-      String prompt_json = ws_protocol_build_text_input(WS_INITIAL_PROMPT);
+    const RuntimeConfig &cfg = runtime_config_get();
+    if (!initial_prompt_sent && cfg.initial_prompt.length() > 0) {
+      String prompt_json = ws_protocol_build_text_input(cfg.initial_prompt);
       bool ok = ws.sendText(prompt_json);
       Serial.printf("[WS TX] initial prompt bytes=%u ok=%d\n",
                     prompt_json.length(), ok ? 1 : 0);
@@ -290,8 +285,8 @@ void handleWsMessage(const WebsocketsMessage &msg) {
         setState(STATE_PROCESSING, "initial prompt sent");
       }
     }
-#endif
     break;
+  }
 
   case MSG_TEXT_DATA:
     Serial.printf("LLM: %s\n", parsed.text.c_str());
@@ -328,7 +323,7 @@ void setup() {
   Serial.println("\n\n--- ESP32 Live API Client ---");
   Serial.println("Phase 4: queue + processing + watchdog");
 
-  wifi_manager_init(WIFI_SSID, WIFI_PASS);
+  wifi_manager_init();
 
   if (!audio_pipeline_init() || !i2s_mic_init() || !i2s_speaker_init()) {
     Serial.println("HAL init failed!");
@@ -374,11 +369,7 @@ void loop() {
       last_ws_attempt = millis();
 
       if (ws_need_reinit) {
-#ifdef WS_URI_OVERRIDE
-        ws.init(WS_URI_OVERRIDE);
-#else
-        ws.init(WS_URI);
-#endif
+        ws.init(runtime_config_get().ws_uri.c_str());
         ws_need_reinit = false;
       }
 

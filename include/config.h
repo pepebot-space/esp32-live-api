@@ -4,9 +4,10 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 
-// ─── WiFi (credentials in credentials.h) ───
+// ─── WiFi ───────────────────────────────────
 #define WIFI_MAX_RETRY 10
 #define WIFI_RETRY_DELAY_MS 5000
+#define SETUP_AP_SSID "PEPEBOT-SETUP"
 
 // ─── WebSocket ─────────────────────────────
 #define WS_URI "ws://192.168.1.100:18790/v1/live"
@@ -48,6 +49,7 @@
 #define WS_PROVIDER "vertex"
 #define WS_MODEL "gemini-live-2.5-flash-native-audio"
 #define WS_AGENT "default"
+#define DEFAULT_INITIAL_PROMPT "Halo, perkenalkan diri kamu secara singkat dalam bahasa Indonesia."
 
 // ─── LED (optional, built-in LED) ──────────
 #define LED_PIN 2
