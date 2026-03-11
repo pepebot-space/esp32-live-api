@@ -29,20 +29,20 @@ This project aims to build an ESP32 firmware that functions as a **voice assista
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLOUD / SERVER                           │
 │                                                                 │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
-│  │  Gemini /     │◄──►│  Live API    │◄──►│  WebSocket       │   │
-│  │  Vertex AI    │    │  Gateway     │    │  Proxy Server    │   │
-│  │  (LLM)       │    │  (Pepebot)   │    │  :18790/v1/live  │   │
-│  └──────────────┘    └──────────────┘    └───────┬──────────┘   │
-│                                                   │              │
-└───────────────────────────────────────────────────┼──────────────┘
+│  ┌──────────────┐    ┌──────────────┐     ┌─────────────────┐   │
+│  │  Gemini /    │◄──►│  Live API    │◄─-─►│  WebSocket      │   │
+│  │  Vertex AI   │    │  Gateway     │     │  Proxy Server   │   │
+│  │  (LLM)       │    │  (Pepebot)   │     │  :18790/v1/live │   │
+│  └──────────────┘    └──────────────┘     └───────┬─────────┘   │
+│                                                   │             │
+└───────────────────────────────────────────────────┼─────────────┘
                                                     │ WebSocket
                                                     │ (JSON + base64 PCM)
                                                     │
-┌───────────────────────────────────────────────────┼──────────────┐
-│                         ESP32                     │              │
-│                                                   │              │
-│  ┌──────────┐   ┌──────────┐   ┌─────────────────▼────────┐     │
+┌───────────────────────────────────────────────────┼─────────────┐
+│                         ESP32                     │             │
+│                                                   │             │
+│  ┌──────────┐   ┌──────────┐   ┌──────────────────▼───────┐     │
 │  │ INMP441  │──►│ I2S RX   │──►│                          │     │
 │  │ (Mic)    │   │ DMA      │   │   Main Application       │     │
 │  └──────────┘   └──────────┘   │                          │     │
@@ -80,11 +80,11 @@ ESP32                                  Proxy Server
   │                                        │
   │──── Setup Message (JSON) ─────────────►│
   │                                        │
-  │◄─── Status: "connected" ──────────────│
-  │◄─── setupComplete ────────────────────│
+  │◄─── Status: "connected" ───────────────│
+  │◄─── setupComplete ─────────────────────│
   │                                        │
-  │──── realtimeInput (audio chunks) ────►│  ◄── loop
-  │◄─── serverContent (audio + text) ─────│  ◄── loop
+  │──── realtimeInput (audio chunks) ─────►│  ◄── loop
+  │◄─── serverContent (audio + text) ──────│  ◄── loop
   │                                        │
   │──── Close ────────────────────────────►│
   │                                        │
@@ -262,13 +262,13 @@ ESP32                                  Proxy Server
 │                FreeRTOS Tasks                  │
 │                                                │
 │  ┌──────────────┐  ┌────────────────────────┐  │
-│  │ wifi_task     │  │ ws_connect_task         │  │
+│  │ wifi_task    │  │ ws_connect_task        │  │
 │  │ (Core 0)     │  │ (Core 0)               │  │
 │  │ Priority: 5  │  │ Priority: 5            │  │
 │  └──────────────┘  └────────────────────────┘  │
 │                                                │
 │  ┌──────────────┐  ┌────────────────────────┐  │
-│  │ mic_task      │  │ ws_send_task            │  │
+│  │ mic_task     │  │ ws_send_task           │  │
 │  │ (Core 1)     │  │ (Core 0)               │  │
 │  │ Priority: 10 │  │ Priority: 8            │  │
 │  │              │  │                        │  │
@@ -284,7 +284,7 @@ ESP32                                  Proxy Server
 │  └──────────────────────────────────────────┘  │
 │                                                │
 │  ┌──────────────┐  ┌────────────────────────┐  │
-│  │ button_task   │  │ led_status_task         │  │
+│  │ button_task  │  │ led_status_task        │  │
 │  │ (Core 0)     │  │ (Core 0)               │  │
 │  │ Priority: 3  │  │ Priority: 1            │  │
 │  └──────────────┘  └────────────────────────┘  │
@@ -355,7 +355,7 @@ INMP441 ──► I2S RX DMA ──► mic_ring_buffer ──► ws_send_task
                                          │    (~5.4KB)      │
                                          │ 3. Build JSON    │
                                          │ 4. WS send       │
-                                         └─────────────────┘
+                                         └──────────────────┘
 
 OUTPUT PIPELINE:
 ════════════════
@@ -438,9 +438,9 @@ i2s_pin_config_t i2s_spk_pins = {
                     └─────┬─────┘
                           │
                           ▼
-                    ┌───────────┐     WiFi Fail
-              ┌────│ WIFI_CONN │────────────────┐
-              │    └─────┬─────┘                │
+                   ┌───────────┐     WiFi Fail
+              ┌────│ WIFI_CONN │─────────────────┐
+              │    └─────┬─────┘                 │
               │          │ WiFi OK               │
               │          ▼                       ▼
               │    ┌───────────┐          ┌───────────┐
@@ -456,13 +456,13 @@ i2s_pin_config_t i2s_spk_pins = {
               │    ┌───────────┐
               ├────│ LISTENING │◄──────────────────┐
               │    └─────┬─────┘                   │
-              │          │ Audio Detected /         │
-              │          │ Button Press             │
+              │          │ Audio Detected /        │
+              │          │ Button Press            │
               │          ▼                         │
               │    ┌───────────┐                   │
-              │    │ STREAMING │── Send audio ──►   │
+              │    │ STREAMING │── Send audio ──►  │
               │    └─────┬─────┘                   │
-              │          │ Server response          │
+              │          │ Server response         │
               │          ▼                         │
               │    ┌───────────┐                   │
               │    │ PLAYING   │── Play audio ─────┘
