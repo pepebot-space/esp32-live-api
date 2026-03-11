@@ -47,6 +47,7 @@ static volatile uint32_t tx_queue_drops = 0;
 static volatile uint32_t ws_disconnect_count = 0;
 static volatile uint32_t ws_watchdog_window_start_ms = 0;
 static volatile uint32_t last_mic_activity_ms = 0;
+static volatile bool initial_prompt_sent = false;
 
 static const char *stateName(AppState s) {
   switch (s) {
@@ -231,6 +232,7 @@ void handleWsEvent(WebsocketsEvent event, String data) {
   if (event == WebsocketsEvent::ConnectionOpened) {
     is_playing_audio = false;
     ws_need_reinit = false;
+    initial_prompt_sent = false;
     ws_disconnect_count = 0;
     ws_watchdog_window_start_ms = millis();
     flushRingBuffer(spk_ring_buf);
@@ -246,6 +248,7 @@ void handleWsEvent(WebsocketsEvent event, String data) {
     flushRingBuffer(spk_ring_buf);
     flushMicTxQueue();
     Serial.println("WS Disconnected!");
+    initial_prompt_sent = false;
     onWsDisconnectWatchdog();
     setState(STATE_WS_CONN, "ws closed, reconnect");
   }
@@ -275,6 +278,19 @@ void handleWsMessage(const WebsocketsMessage &msg) {
     flushRingBuffer(spk_ring_buf);
     flushMicTxQueue();
     setState(STATE_LISTENING, "server setupComplete");
+
+#ifdef WS_INITIAL_PROMPT
+    if (!initial_prompt_sent && strlen(WS_INITIAL_PROMPT) > 0) {
+      String prompt_json = ws_protocol_build_text_input(WS_INITIAL_PROMPT);
+      bool ok = ws.sendText(prompt_json);
+      Serial.printf("[WS TX] initial prompt bytes=%u ok=%d\n",
+                    prompt_json.length(), ok ? 1 : 0);
+      initial_prompt_sent = ok;
+      if (ok) {
+        setState(STATE_PROCESSING, "initial prompt sent");
+      }
+    }
+#endif
     break;
 
   case MSG_TEXT_DATA:
