@@ -227,7 +227,6 @@ void handleWsEvent(WebsocketsEvent event, String data) {
   if (event == WebsocketsEvent::ConnectionOpened) {
     is_playing_audio = false;
     ws_need_reinit = false;
-    initial_prompt_sent = false;
     ws_disconnect_count = 0;
     ws_watchdog_window_start_ms = millis();
     flushRingBuffer(spk_ring_buf);
@@ -243,7 +242,6 @@ void handleWsEvent(WebsocketsEvent event, String data) {
     flushRingBuffer(spk_ring_buf);
     flushMicTxQueue();
     Serial.println("WS Disconnected!");
-    initial_prompt_sent = false;
     onWsDisconnectWatchdog();
     setState(STATE_WS_CONN, "ws closed, reconnect");
   }
@@ -378,6 +376,10 @@ void loop() {
       bool connected = ws.connect();
       Serial.printf("[WS] connect attempt connected=%d reinit=%d\n",
                     connected ? 1 : 0, ws_need_reinit ? 1 : 0);
+      if (!connected) {
+        // Force fresh init on next retry to avoid stale client state
+        ws_need_reinit = true;
+      }
     }
   }
 
@@ -396,6 +398,18 @@ void loop() {
       setState(STATE_WS_CONN, "ws poll exception");
     }
   }
+
+  // Extra safety: if WS is lost in any runtime state, force reconnect flow.
+  // This handles silent disconnects where ConnectionClosed event is missed.
+
+  // if (wifi_ok && !ws.isConnected() && current_state != STATE_WIFI_CONN &&
+  //     current_state != STATE_WS_CONN) {
+  //   ws_need_reinit = true;
+  //   is_playing_audio = false;
+  //   flushMicTxQueue();
+  //   flushRingBuffer(spk_ring_buf);
+  //   setState(STATE_WS_CONN, "ws disconnected detect");
+  // }
 
   if (!ws.isConnected() &&
       (current_state == STATE_STREAMING || current_state == STATE_PROCESSING ||
