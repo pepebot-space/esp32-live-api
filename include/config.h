@@ -49,7 +49,17 @@
 #define WS_PROVIDER "vertex"
 #define WS_MODEL "gemini-live-2.5-flash-native-audio"
 #define WS_AGENT "default"
-#define DEFAULT_INITIAL_PROMPT "Halo, perkenalkan diri kamu secara singkat dalam bahasa Indonesia."
+#define DEFAULT_INITIAL_PROMPT                                                 \
+  "Halo, perkenalkan diri kamu secara singkat dalam bahasa Indonesia."
+
+// ─── Display & UI (SSD1306) ──────────────────
+#define I2C_SDA 21
+#define I2C_SCL 22
+#define LCD_WIDTH 128
+#define LCD_HEIGHT 32
+
+// ─── Button ────────────────────────────────
+#define BUTTON_PIN 0 // BOOT button by default
 
 // ─── LED (optional, built-in LED) ──────────
 #define LED_PIN 2

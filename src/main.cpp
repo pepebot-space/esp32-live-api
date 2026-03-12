@@ -1,5 +1,6 @@
 #include "audio_pipeline.h"
 #include "config.h"
+#include "display_ui.h"
 #include "i2s_mic.h"
 #include "i2s_speaker.h"
 #include "runtime_config.h"
@@ -148,10 +149,9 @@ static void micTxTask(void *param) {
     }
 
     size_t b64_len = 0;
-    int b64_ret =
-        mbedtls_base64_encode((unsigned char *)b64_buf, sizeof(b64_buf) - 1,
-                              &b64_len, (const unsigned char *)chunk.pcm,
-                              chunk.len);
+    int b64_ret = mbedtls_base64_encode(
+        (unsigned char *)b64_buf, sizeof(b64_buf) - 1, &b64_len,
+        (const unsigned char *)chunk.pcm, chunk.len);
     if (b64_ret != 0 || b64_len == 0) {
       tx_drops++;
       Serial.printf("[MIC TX] b64 encode failed err=%d input=%u\n", b64_ret,
@@ -186,7 +186,8 @@ static void pumpMicToTxQueue() {
     return;
 
   AppState s = current_state;
-  if (!(s == STATE_LISTENING || s == STATE_STREAMING || s == STATE_PROCESSING)) {
+  if (!(s == STATE_LISTENING || s == STATE_STREAMING ||
+        s == STATE_PROCESSING)) {
     return;
   }
 
@@ -265,8 +266,7 @@ void handleWsMessage(const WebsocketsMessage &msg) {
     Serial.println("Server Status: connected");
     break;
 
-  case MSG_SETUP_COMPLETE:
-  {
+  case MSG_SETUP_COMPLETE: {
     Serial.println("Setup Complete! Ready to stream.");
     is_playing_audio = false;
     flushRingBuffer(mic_ring_buf);
@@ -321,8 +321,9 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("\n\n--- ESP32 Live API Client ---");
-  Serial.println("Phase 4: queue + processing + watchdog");
+  Serial.println("Phase 4: queue + processing + watchdog + ui");
 
+  display_ui_init();
   wifi_manager_init();
 
   if (!audio_pipeline_init() || !i2s_mic_init() || !i2s_speaker_init()) {
@@ -355,6 +356,7 @@ void setup() {
 }
 
 void loop() {
+  display_ui_loop();
   wifi_manager_loop();
   bool wifi_ok = wifi_manager_is_connected();
 

@@ -9,6 +9,7 @@ This project is an ESP32 firmware for two-way audio streaming (input and output)
 3. **I2S amplifier (MAX98357A or UDA1334A)**
 4. **Small speaker** (for example 3W 4Ohm)
 5. Jumper wires
+6. **0.91" OLED (JMD0.91A / SSD1306 I2C)** for eye expressions
 
 ## Software Requirements
 
@@ -43,6 +44,23 @@ Based on `include/config.h`, connect as follows.
 | **DIN** | GPIO 12 | Audio data input |
 | **SD / SD_MODE** | VDD / float | Leave floating or tie to VDD |
 | **Speaker +/-** | Speaker terminals | Connect to speaker |
+
+### 3) OLED Display JMD0.91A (I2C)
+| OLED Pin | ESP32 Pin | Notes |
+| :---: | :---: | :--- |
+| **VCC** | 3.3V | Power |
+| **GND** | GND | Ground |
+| **SCL** | GPIO 22 | I2C clock (`I2C_SCL`) |
+| **SDA** | GPIO 21 | I2C data (`I2C_SDA`) |
+
+### 4) BOOT Button Behavior
+- The built-in **BOOT button** (`BUTTON_PIN = GPIO0`) is used as a display action button.
+- When **not pressed**, the OLED shows cute animated eye expressions.
+- While the button is **pressed and held**, the OLED switches to info view and shows:
+  - ESSID (current WiFi SSID)
+  - IP address
+  - WebSocket URI (shortened if too long)
+- When the button is **released**, it returns to eye animation.
 
 ## Build, Upload, and Monitor
 
